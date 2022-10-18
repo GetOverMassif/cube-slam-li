@@ -1,0 +1,31 @@
+<launch>
+   <node pkg="detect_3d_cuboid" type="detect_3d_cuboid_node" name="detect_3d_cuboid_node"  output="screen">
+   </node>
+   <!-- <param name="base_folder" value ="$(find detect_3d_cuboid)/data/example/"/>
+   <param name="image_format" value ="jpg"/>
+   <param name="x" value ="188"/>
+   <param name="y" value ="189"/>
+   <param name="w" value ="201"/>
+   <param name="h" value ="311"/> -->
+
+   <param name="base_folder" value ="$(find detect_3d_cuboid)/data/redwood/03815/"/>
+   <param name="image_format" value ="png"/>
+   <param name="x" value ="175"/>
+   <param name="y" value ="65"/>
+   <param name="w" value ="305"/>
+   <param name="h" value ="410"/>
+
+   <param name="whether_plot_detail_images" value ="false"/>
+   <param name="whether_plot_final_images" value ="true"/>
+   <param name="print_details" value ="false"/>
+   <param name="whether_sample_bbox_height" value ="false"/>
+   <param name="whether_sample_cam_roll_pitch" value ="false"/>
+
+   <!-- <param name="R00" value =""/>
+   <param name="R01" value =""/>
+   <param name="R02" value =""/>
+   <param name="R10" value =""/>
+   <param name="R21" value =""/>
+   <param name="R32" value =""/> -->
+
+</launch>
