@@ -2,7 +2,7 @@
  * @Author: GetOverMassif 164567487@qq.com
  * @Date: 2022-10-15 21:46:17
  * @LastEditors: GetOverMassif 164567487@qq.com
- * @LastEditTime: 2022-10-18 21:03:24
+ * @LastEditTime: 2022-10-18 23:44:29
  * @FilePath: /cubeslam_ws2/src/cube_slam/detect_3d_cuboid/src/main.cpp
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -42,8 +42,12 @@ int main(int argc, char **argv)
     std::string base_folder = ros::package::getPath("detect_3d_cuboid") + "/data/example/";
     std::string image_format;
     double x, y, w, h, prob;
+    int frame_index = 0;
+    bool use_lines = false;
     nh.param<std::string>("base_folder", base_folder, base_folder);
     nh.param<std::string>("image_format", image_format, "jpg");
+    nh.param<int>("frame_index", frame_index, 0);
+    nh.param<bool>("use_lines", use_lines, false);
     nh.param<double>("x", x, 188);
     nh.param<double>("y", y, 189);
     nh.param<double>("w", w, 201);
@@ -51,9 +55,12 @@ int main(int argc, char **argv)
     nh.param<double>("prob", prob, 0.8800);
 
     Matrix3d Kalib;
-    Matrix4d transToWolrd;
 
-    if (!read_Kalib_and_transToWorld(base_folder + "KT.txt", Kalib, transToWolrd)) {
+    // cout << "Matrix3d Kalib = " << Kalib.matrix() << endl;
+
+    Matrix4d transToWorld;
+
+    if (!read_Kalib_and_transToWorld(base_folder + "KT.txt", Kalib, transToWorld)) {
         return 0;
     }
     
@@ -62,7 +69,6 @@ int main(int argc, char **argv)
     obj_bbox_coors << x, y, w, h, prob;
     obj_bbox_coors.leftCols<2>().array() -= 1;    // change matlab coordinate to c++, minus 1
 
-    int frame_index = 0;
     char frame_index_c[256];
     sprintf(frame_index_c, "%04d", frame_index); // format into 4 digit
 
@@ -70,11 +76,17 @@ int main(int argc, char **argv)
     // cv::Mat rgb_img = cv::imread(base_folder + frame_index_c + "_rgb_raw.jpg", 1);
 
     cv::Mat rgb_img = cv::imread(base_folder + frame_index_c + "_rgb_raw." + image_format, 1);
+    // cv::Mat gray_img;
+    // cv::cvtColor(rgb_img, gray_img, CV_BGR2GRAY);
     printf("img size = (%d, %d)\n", rgb_img.rows, rgb_img.cols);
 
     // 读取边
+    // Eigen::MatrixXd all_lines_raw(100, 4); // 100 is some large frame number,   the txt edge index start from 0
     Eigen::MatrixXd all_lines_raw(100, 4); // 100 is some large frame number,   the txt edge index start from 0
-    read_all_number_txt(base_folder + "edge_detection/LSD/" + frame_index_c + "_edge.txt", all_lines_raw);
+    if (use_lines) {
+        std::cout << "use lines" << std::endl;
+        read_all_number_txt(base_folder + "edge_detection/LSD/" + frame_index_c + "_edges.txt", all_lines_raw);
+    }
     
     // ****************创建 detect_3d_cuboid 对象*******************
     detect_3d_cuboid detect_cuboid_obj;
@@ -93,11 +105,12 @@ int main(int argc, char **argv)
 
     // double begin = ros::Time::now().toSec();
     // cout << "begin" << endl;
-    detect_cuboid_obj.detect_cuboid(rgb_img, transToWolrd, obj_bbox_coors, all_lines_raw, all_object_cuboids);
+    // std::cout << "rgb_img.channels() = " << gray_img.channels() << endl;
+    detect_cuboid_obj.detect_cuboid(rgb_img, transToWorld, obj_bbox_coors, all_lines_raw, all_object_cuboids);
     // ros::Duration(0.5).sleep();
     // double end = ros::Time::now().toSec();
     // printf("begin = %f,\nend = %f,\nduration = %f", begin, end, end - begin);
     
-    ca::Profiler::print_aggregated(std::cout);
+    // ca::Profiler::print_aggregated(std::cout);
     return 0;
 }
