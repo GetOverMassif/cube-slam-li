@@ -1,13 +1,15 @@
 <!-- -->
 <launch>
 
-   <node pkg="line_lbd" type="linelbd_detect_node" name="linelbd_detect_node"  output="screen" 
-		args="$(find line_lbd)/data/000000.png">
+   <node pkg="line_lbd" type="linelbd_detect_node" name="linelbd_detect_node"  output="screen" >
    </node>
 
-   <param name="save_folder" value ="$(find line_lbd)/data/"/>
+   <param name="image_path" value ="/media/lj/TOSHIBA/dataset/DSP-SLAM/data/redwood_chairs/03815/image_0/"/>
+   <param name="save_folder" value ="$(find line_lbd)/data/03815/"/>
    <param name="use_LSD_algorithm" value="true"/>  # true, false   LSD or Edline detector.
-   <param name="save_to_imgs" value="true"/>
+   <param name="save_to_imgs" value="false"/>
    <param name="save_to_txts" value="true"/>
+   <param name="image_format" value ="png"/>
+   <param name="image_num" value ="1913"/>
 
 </launch>

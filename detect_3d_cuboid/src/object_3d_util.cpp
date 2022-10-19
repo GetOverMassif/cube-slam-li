@@ -572,7 +572,7 @@ void ray_plane_interact(const MatrixXd &rays, const Eigen::Vector4d &plane, Matr
     intersections = frac.transpose().replicate<3, 1>().array() * rays.array();
 }
 
-void plane_hits_3d(const Matrix4d &transToWolrd, const Matrix3d &invK, const Vector4d &plane_sensor, MatrixXd pixels, Matrix3Xd &pts_3d_world)
+void plane_hits_3d(const Matrix4d &transToWorld, const Matrix3d &invK, const Vector4d &plane_sensor, MatrixXd pixels, Matrix3Xd &pts_3d_world)
 // compute ray intersection with plane in 3D.
 // transToworld: 4*4 camera pose.   invK: inverse of calibration.   plane: 1*4  plane equation in sensor frame.
 // pixels  2*n; each column is a pt [x;y] x is horizontal,y is vertical   outputs: pts3d 3*n in world frame
@@ -582,7 +582,7 @@ void plane_hits_3d(const Matrix4d &transToWolrd, const Matrix3d &invK, const Vec
     MatrixXd pts_ray = invK * pixels; //each column is a 3D world coordinate  3*n
     MatrixXd pts_3d_sensor;
     ray_plane_interact(pts_ray, plane_sensor, pts_3d_sensor);
-    pts_3d_world = homo_to_real_coord<double>(transToWolrd * real_to_homo_coord<double>(pts_3d_sensor)); //
+    pts_3d_world = homo_to_real_coord<double>(transToWorld * real_to_homo_coord<double>(pts_3d_sensor)); //
 }
 
 Vector4d get_wall_plane_equation(const Vector3d &gnd_seg_pt1, const Vector3d &gnd_seg_pt2)
@@ -609,20 +609,20 @@ void getVanishingPoints(const Matrix3d &KinvR, double yaw_esti, Vector2d &vp_1, 
 
 // box_corners_2d_float is 2*8    change to my object struct from 2D box corners.
 void change_2d_corner_to_3d_object(const MatrixXd &box_corners_2d_float, const Vector3d &configs, const Vector4d &ground_plane_sensor,
-                                   const Matrix4d &transToWolrd, const Matrix3d &invK, Eigen::Matrix<double, 3, 4> &projectionMatrix,
+                                   const Matrix4d &transToWorld, const Matrix3d &invK, Eigen::Matrix<double, 3, 4> &projectionMatrix,
                                    cuboid &sample_obj)
 {
     Matrix3Xd obj_gnd_pt_world_3d;
-    plane_hits_3d(transToWolrd, invK, ground_plane_sensor, box_corners_2d_float.rightCols(4), obj_gnd_pt_world_3d); //% 3*n each column is a 3D point  floating point
+    plane_hits_3d(transToWorld, invK, ground_plane_sensor, box_corners_2d_float.rightCols(4), obj_gnd_pt_world_3d); //% 3*n each column is a 3D point  floating point
 
     double length_half = (obj_gnd_pt_world_3d.col(0) - obj_gnd_pt_world_3d.col(3)).norm() / 2; // along object x direction   corner 5-8
     double width_half = (obj_gnd_pt_world_3d.col(0) - obj_gnd_pt_world_3d.col(1)).norm() / 2;  // along object y direction   corner 5-6
 
     Vector4d partwall_plane_world = get_wall_plane_equation(obj_gnd_pt_world_3d.col(0), obj_gnd_pt_world_3d.col(1)); //% to compute height, need to unproject-hit-planes formed by 5-6 corner
-    Vector4d partwall_plane_sensor = transToWolrd.transpose() * partwall_plane_world;                                // wall plane in sensor frame
+    Vector4d partwall_plane_sensor = transToWorld.transpose() * partwall_plane_world;                                // wall plane in sensor frame
 
     Matrix3Xd obj_top_pt_world_3d;
-    plane_hits_3d(transToWolrd, invK, partwall_plane_sensor, box_corners_2d_float.col(1), obj_top_pt_world_3d); // should match obj_gnd_pt_world_3d  % compute corner 2
+    plane_hits_3d(transToWorld, invK, partwall_plane_sensor, box_corners_2d_float.col(1), obj_top_pt_world_3d); // should match obj_gnd_pt_world_3d  % compute corner 2
     double height_half = obj_top_pt_world_3d(2, 0) / 2;
 
     double mean_obj_x = obj_gnd_pt_world_3d.row(0).mean();

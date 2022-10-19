@@ -440,16 +440,16 @@ void incremental_build_graph(Eigen::MatrixXd& offline_pred_frame_objects, Eigen:
 		  return;
 	      raw_2d_objs.leftCols<2>().array() -=1;   // change matlab coordinate to c++, minus 1
 	      
-	      Matrix4d transToWolrd;
+	      Matrix4d transToWorld;
           // 第一帧图像不进行采样
 	      detect_cuboid_obj.whether_sample_cam_roll_pitch = (frame_index!=0); // first frame doesn't need to sample cam pose. could also sample. doesn't matter much
 	      if (detect_cuboid_obj.whether_sample_cam_roll_pitch) //sample around first frame's pose
-		    transToWolrd = fixed_init_cam_pose_Twc.to_homogeneous_matrix();
+		    transToWorld = fixed_init_cam_pose_Twc.to_homogeneous_matrix();
 	      else
-		    transToWolrd = curr_cam_pose_Twc.to_homogeneous_matrix();
+		    transToWorld = curr_cam_pose_Twc.to_homogeneous_matrix();
 	      
 	      std::vector<ObjectSet> frames_cuboids; // each 2d bbox generates an ObjectSet, which is vector of sorted proposals
-	      detect_cuboid_obj.detect_cuboid(raw_rgb_img,transToWolrd,raw_2d_objs,all_lines_raw, frames_cuboids);
+	      detect_cuboid_obj.detect_cuboid(raw_rgb_img,transToWorld,raw_2d_objs,all_lines_raw, frames_cuboids);
 	      currframe->cuboids_2d_img = detect_cuboid_obj.cuboids_2d_img;
 	      
 	      has_detected_cuboid = frames_cuboids.size()>0 && frames_cuboids[0].size()>0;
@@ -468,7 +468,7 @@ void incremental_build_graph(Eigen::MatrixXd& offline_pred_frame_objects, Eigen:
                 Vector3d new_camera_eulers =  detect_cuboid_obj.cam_pose_raw.euler_angle;
                 new_camera_eulers(0) += detected_cube->camera_roll_delta; new_camera_eulers(1) += detected_cube->camera_pitch_delta;
                 Matrix3d rotation_new = euler_zyx_to_rot<double>(new_camera_eulers(0),new_camera_eulers(1),new_camera_eulers(2));
-                Vector3d trans = transToWolrd.col(3).head<3>();
+                Vector3d trans = transToWorld.col(3).head<3>();
                 g2o::SE3Quat curr_cam_pose_Twc_new(rotation_new,trans);
                 cube_local_meas = cube_ground_value.transform_to(curr_cam_pose_Twc_new);
             }

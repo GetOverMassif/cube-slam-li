@@ -40,28 +40,32 @@ void detect_3d_cuboid::set_calibration(const Matrix3d &Kalib)
 	cam_pose.invK = Kalib.inverse();
 }
 
-void detect_3d_cuboid::set_cam_pose(const Matrix4d &transToWolrd)
+void detect_3d_cuboid::set_cam_pose(const Matrix4d &transToWorld)
 {
-	cam_pose.transToWolrd = transToWolrd;
-	cam_pose.rotationToWorld = transToWolrd.topLeftCorner<3, 3>();
+	cam_pose.transToWorld = transToWorld;
+	cam_pose.rotationToWorld = transToWorld.topLeftCorner<3, 3>();
 	Vector3d euler_angles;
 	quat_to_euler_zyx(Quaterniond(cam_pose.rotationToWorld), euler_angles(0), euler_angles(1), euler_angles(2));
 	cam_pose.euler_angle = euler_angles;
 	cam_pose.invR = cam_pose.rotationToWorld.inverse();
-	cam_pose.projectionMatrix = cam_pose.Kalib * transToWolrd.inverse().topRows<3>(); // project world coordinate to camera
+	cam_pose.projectionMatrix = cam_pose.Kalib * transToWorld.inverse().topRows<3>(); // project world coordinate to camera
 	cam_pose.KinvR = cam_pose.Kalib * cam_pose.invR;
 	cam_pose.camera_yaw = cam_pose.euler_angle(2);
-	//TODO relative measure? not good... then need to change transToWolrd.
+	//TODO relative measure? not good... then need to change transToWorld.
 }
 
 // TODO: 检测长方体输入的参数包括：rgb图像、世界坐标系下的齐次变换、物体检测框位置、所有线段信息，以及记录所有物体长方体的容器
-void detect_3d_cuboid::detect_cuboid(const cv::Mat &rgb_img, const Matrix4d &transToWolrd, const MatrixXd &obj_bbox_coors,
-									 MatrixXd all_lines_raw, std::vector<ObjectSet> &all_object_cuboids)
+void detect_3d_cuboid::detect_cuboid(const cv::Mat &rgb_img,
+                                     const Matrix4d &transToWorld,
+                                     const MatrixXd &obj_bbox_coors,
+                                     MatrixXd all_lines_raw,
+                                     std::vector<ObjectSet> &all_object_cuboids)
 {
 	clock_t time0 = clock();
     std::cout << time0 << "\n\n";
 
-    set_cam_pose(transToWolrd);
+    std::cout << "RAW" << std::endl;
+    set_cam_pose(transToWorld);
 	cam_pose_raw = cam_pose;
 
 	cv::Mat gray_img;
@@ -102,7 +106,7 @@ void detect_3d_cuboid::detect_cuboid(const cv::Mat &rgb_img, const Matrix4d &tra
 
 	// find ground-wall boundary edges
 	Vector4d ground_plane_world(0, 0, 1, 0); // treated as column vector % in my pop-up code, I use [0 0 -1 0]. here I want the normal pointing innerwards, towards the camera to match surface normal prediction
-	Vector4d ground_plane_sensor = cam_pose.transToWolrd.transpose() * ground_plane_world;
+	Vector4d ground_plane_sensor = cam_pose.transToWorld.transpose() * ground_plane_world;
 
 	// int object_id=1;
     // 遍历所有2D检测框
@@ -239,10 +243,10 @@ void detect_3d_cuboid::detect_cuboid(const cv::Mat &rgb_img, const Matrix4d &tra
 					{
 						if (whether_sample_cam_roll_pitch)
 						{
-							Matrix4d transToWolrd_new = transToWolrd;
+							Matrix4d transToWolrd_new = transToWorld;
 							transToWolrd_new.topLeftCorner<3, 3>() = euler_zyx_to_rot<double>(cam_roll_samples[cam_roll_id], cam_pitch_samples[cam_pitch_id], cam_pose_raw.euler_angle(2));
 							set_cam_pose(transToWolrd_new);
-							ground_plane_sensor = cam_pose.transToWolrd.transpose() * ground_plane_world;
+							ground_plane_sensor = cam_pose.transToWorld.transpose() * ground_plane_world;
 						}
 
 						double obj_yaw_esti = obj_yaw_samples[obj_yaw_id];
@@ -487,15 +491,15 @@ void detect_3d_cuboid::detect_cuboid(const cv::Mat &rgb_img, const Matrix4d &tra
 
 				if (whether_sample_cam_roll_pitch)
 				{
-					Matrix4d transToWolrd_new = transToWolrd;
+					Matrix4d transToWolrd_new = transToWorld;
 					transToWolrd_new.topLeftCorner<3, 3>() = euler_zyx_to_rot<double>(all_configs_error_one_objH(raw_cube_ind, 7), all_configs_error_one_objH(raw_cube_ind, 8), cam_pose_raw.euler_angle(2));
 					set_cam_pose(transToWolrd_new);
-					ground_plane_sensor = cam_pose.transToWolrd.transpose() * ground_plane_world;
+					ground_plane_sensor = cam_pose.transToWorld.transpose() * ground_plane_world;
 				}
 
 				cuboid *sample_obj = new cuboid();
 				change_2d_corner_to_3d_object(all_box_corners_2d_one_objH.block(2 * raw_cube_ind, 0, 2, 8), all_configs_error_one_objH.row(raw_cube_ind).head<3>(),
-											  ground_plane_sensor, cam_pose.transToWolrd, cam_pose.invK, cam_pose.projectionMatrix, *sample_obj);
+											  ground_plane_sensor, cam_pose.transToWorld, cam_pose.invK, cam_pose.projectionMatrix, *sample_obj);
 				// 		  sample_obj->print_cuboid();
 				if ((sample_obj->scale.array() < 0).any())
 					continue; // scale should be positive
@@ -553,11 +557,17 @@ void detect_3d_cuboid::detect_cuboid(const cv::Mat &rgb_img, const Matrix4d &tra
 	if (whether_plot_final_images || whether_save_final_images)
 	{
 		cv::Mat frame_all_cubes_img = rgb_img.clone();
-		for (int object_id = 0; object_id < all_object_cuboids.size(); object_id++)
+		for (int object_id = 0; object_id < all_object_cuboids.size(); object_id++) {
 			if (all_object_cuboids[object_id].size() > 0)
 			{
-				plot_image_with_cuboid(frame_all_cubes_img, all_object_cuboids[object_id][0]);
+				double x = obj_bbox_coors(object_id,0);
+				double y = obj_bbox_coors(object_id,1);
+				double w = obj_bbox_coors(object_id,2);
+				double h = obj_bbox_coors(object_id,3);
+                plot_image_with_cuboid(frame_all_cubes_img, all_object_cuboids[object_id][0]);
+                cv::rectangle(frame_all_cubes_img, cv::Point(x, y), cv::Point(x + w, y + h), cv::Scalar(0, 255, 255));
 			}
+        }
 		if (whether_save_final_images)
 			cuboids_2d_img = frame_all_cubes_img;
 		if (whether_plot_final_images)

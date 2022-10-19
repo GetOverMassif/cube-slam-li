@@ -10,10 +10,19 @@
 
    <param name="base_folder" value ="$(find detect_3d_cuboid)/data/redwood/03815/"/>
    <param name="image_format" value ="png"/>
-   <param name="x" value ="175"/>
-   <param name="y" value ="65"/>
-   <param name="w" value ="305"/>
-   <param name="h" value ="410"/>
+   <param name="frame_index" value ="33"/>
+   <!-- <param name="use_lines" value ="false"/> -->
+   <param name="use_lines" value ="true"/>
+   <param name="x" value ="180"/>
+   <param name="y" value ="53"/>
+   <param name="w" value ="300"/>
+   <param name="h" value ="418"/>
+
+   <!-- for 0842
+   <param name="x" value ="94.826767"/>
+   <param name="y" value ="52.941727"/>
+   <param name="w" value ="353.460327"/>
+   <param name="h" value ="417.177673"/> -->
 
    <param name="whether_plot_detail_images" value ="false"/>
    <param name="whether_plot_final_images" value ="true"/>
